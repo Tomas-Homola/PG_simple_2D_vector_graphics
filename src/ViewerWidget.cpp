@@ -640,6 +640,7 @@ ViewerWidget::ViewerWidget(QString viewerName, QSize imgSize, QWidget* parent)
 		resizeWidget(img->size());
 		setPainter();
 		setDataPtr();
+		clear();
 	}
 }
 ViewerWidget::~ViewerWidget()
@@ -699,7 +700,7 @@ void ViewerWidget::clear(QColor color)
 	{
 		for (size_t y = 0; y < img->height(); y++)
 		{
-			setPixel(x, y, color);
+			setPixel(x, y, backgroundColor);
 		}
 	}
 

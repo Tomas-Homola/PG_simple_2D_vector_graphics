@@ -26,6 +26,7 @@ private:
 	QColor currentPenColor;
 	QColor currentFillColor;
 	QColor pointColor = QColor("#1F75FE");
+	QColor currentBackgroundColor;
 
 	QVector<QPointF> objectPoints;
 	QVector<QPointF>* tempObjPoints = nullptr;
@@ -78,6 +79,7 @@ private slots:
 	//Tabs slots
 	void on_tabWidget_tabCloseRequested(int tabId);
 	void on_actionRename_triggered();
+	void on_tabWidget_currentChanged(int x);
 
 	//Image slots
 	void on_actionNew_triggered();

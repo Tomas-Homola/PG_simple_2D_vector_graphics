@@ -44,6 +44,7 @@ private:
 	QPainter* painter = nullptr;
 
 	QVector<Object2D*> geometryObjects;
+	QColor backgroundColor = QColor("#2D2D2D");
 
 	QColor defaultColor0 = QColor("#ED1C24");
 	QColor defaultColor1 = QColor("#00AD33");
@@ -95,6 +96,10 @@ public:
 
 	QVector<Object2D*>* getGeometryObjectsPointer() { return &geometryObjects; }
 	QVector<Object2D*>& getGeometryObjectsRef() { return geometryObjects; }
+	void setGeometryObjects(QVector<Object2D*> newGeometryObjects) { geometryObjects = newGeometryObjects; }
+
+	QColor getBackgroundColor() { return backgroundColor; }
+	void setBackgroundColor(QColor newBackgroundColor) { backgroundColor = newBackgroundColor; }
 
 	// funkcie na kreslenie
 	void drawLineDDA(QPoint point1, QPoint point2, QColor color);

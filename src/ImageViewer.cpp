@@ -9,6 +9,7 @@ ImageViewer::ImageViewer(QWidget* parent)
 
 	currentPenColor = QColor("#FFFFFF");
 	currentFillColor = QColor("#1F75FE"); // custom modra farba
+	qDebug() << currentBackgroundColor.name();
 	ui->pushButton_PenColorDialog->setStyleSheet("background-color:#FFFFFF");
 	ui->pushButton_FillColorDialog->setStyleSheet("background-color:#1F75FE");
 
@@ -396,6 +397,8 @@ void ImageViewer::ViewerWidgetMouseMove(ViewerWidget* w, QEvent* event)
 {
 	QMouseEvent* e = static_cast<QMouseEvent*>(event);
 	ViewerWidget* vw = getCurrentViewerWidget();
+	if (vw == nullptr)
+		return;
 	double deltaX = 0.0, deltaY = 0.0;
 
 	currentGeometryObjects = vw->getGeometryObjectsPointer();
@@ -534,7 +537,10 @@ void ImageViewer::setBackgroundColor(QColor color)
 	ViewerWidget* w = getCurrentViewerWidget();
 
 	if (w != nullptr)
-		w->clear(color);
+	{
+		w->setBackgroundColor(color);
+		w->clear();
+	}
 	else
 		warningMessage("No image opened");
 }
@@ -567,6 +573,11 @@ void ImageViewer::on_actionRename_triggered()
 		w->setName(text);
 		ui->tabWidget->setTabText(ui->tabWidget->currentIndex(), text);
 	}
+}
+
+void ImageViewer::on_tabWidget_currentChanged(int x)
+{
+	ViewerWidget* vw = getCurrentViewerWidget();
 }
 
 //Image slots
@@ -645,7 +656,11 @@ void ImageViewer::on_actionClear_triggered()
 }
 void ImageViewer::on_actionSet_background_color_triggered()
 {
-	QColor backgroundColor = QColorDialog::getColor(Qt::white, this, "Select color of background");
+	ViewerWidget* vw = getCurrentViewerWidget();
+	if (vw == nullptr)
+		return;
+
+	QColor backgroundColor = QColorDialog::getColor(vw->getBackgroundColor(), this, "Select color of background");
 	if (backgroundColor.isValid()) {
 		setBackgroundColor(backgroundColor);
 	}
@@ -1183,4 +1198,180 @@ void ImageViewer::on_checkBox_FillObject_clicked()
 		getCurrentViewerWidget()->clear();
 		drawObjects();
 	}
+}
+
+void ImageViewer::on_actionExport_triggered()
+{
+	ViewerWidget* vw = getCurrentViewerWidget();
+	QVector<Object2D*>* tempVect = nullptr;
+	QVector<QPointF>* tempVectPoints = nullptr;
+	QString type = "", name = "", pen = "", fill = "", shouldFill = "", numOfPoints = "", points = "";
+	QStringList pointsList;
+
+	if (vw == nullptr)
+		return;
+
+	tempVect = vw->getGeometryObjectsPointer();
+
+	QString fileName = QFileDialog::getSaveFileName(this, "Export File", vw->getName(), tr("th File (*.th);;All files (*.)"));
+
+	if (fileName.isEmpty())
+		return;
+
+	QFile exportFile(fileName);
+
+	if (!exportFile.open(QIODevice::WriteOnly | QIODevice::Text))
+	{
+		warningMessage("Error with opening file");
+		return;
+	}
+
+	QTextStream toFile(&exportFile);
+
+	toFile << "#TH File Format\n"; // hlavicka
+	toFile << vw->getName() << "\n"; // nazov
+	toFile << QString::number(vw->getImgWidth()) << "\n"; // rozmery
+	toFile << QString::number(vw->getImgHeight()) << "\n";
+	toFile << vw->getBackgroundColor().name() << "\n"; // farba pozadia
+
+	if (tempVect->isEmpty())
+	{
+		toFile << 0;
+		exportFile.close();
+		infoMessage("File exported");
+	}
+	else
+	{
+		toFile << tempVect->size() << "\n";
+
+		for (int i = 0; i < tempVect->size(); i++)
+		{
+			type = QString::number((*tempVect)[i]->getObjectType()); // typ objektu
+			name = (*tempVect)[i]->getObjectName(); // nazov objektu
+			pen = (*tempVect)[i]->getPenColor().name(); // farba pera
+			fill = (*tempVect)[i]->getFillColor().name(); // farba vyplne
+			if ((*tempVect)[i]->fillObject()) // ci sa ma objekt vyplnat
+				shouldFill = QString::number(1); // ano
+			else
+				shouldFill = QString::number(0); // nie
+
+			tempVectPoints = (*tempVect)[i]->getObjectPointsPointer();
+			numOfPoints = QString::number(tempVectPoints->size()); // pocet vrcholov
+
+			pointsList.clear();
+			for (int j = 0; j < tempVectPoints->size(); j++) // body sa daju do QString listu
+			{
+				pointsList.push_back(QString("%1,%2").arg(QString::number((*tempVectPoints)[j].x(), 'f', 3)).arg(QString::number((*tempVectPoints)[j].y(), 'f', 3)));
+			}
+
+			points = pointsList.join(";"); // toto spravi z listu jeden string, kde budu body oddelene cez ";"
+
+			toFile << type << "|" << name << "|" << pen << "|" << fill << "|" << shouldFill << "|" << numOfPoints << "|" << points << "\n";
+		}
+
+		exportFile.close();
+		infoMessage("File exported");
+	}
+}
+void ImageViewer::on_actionImport_triggered()
+{
+	ViewerWidget* vw = nullptr;
+	Object2D* newObject = nullptr;
+
+	QVector<Object2D*> tempObjects;
+	QVector<QPointF> tempObjectPoints;
+
+	QPointF tempPointF(0.0, 0.0);
+	QString name = "", penColor = "", fillColor = "", backgroundColor = "", tempString = "", objName = "";
+	int height = 0, width = 0, type = 0, tempInt = 0, numOfObj = 0;
+	double x = 0.0, y = 0.0;
+	bool shouldFill = false;
+
+	QString fileName = QFileDialog::getOpenFileName(this, "Import File", "", tr("th File (*.th)"));
+	if (fileName.isEmpty())
+	{
+		warningMessage("Empty fileName");
+		return;
+	}
+
+	QFile importFile(fileName);
+	if (!importFile.open(QIODevice::ReadOnly | QIODevice::Text))
+	{
+		warningMessage("Error with opening file");
+		return;
+	}
+
+	QTextStream fromFile(&importFile);
+
+	if (fromFile.readLine() != QString("#TH File Format"))
+	{
+		warningMessage("Incorrect file");
+		importFile.close();
+		return;
+	}
+
+	name = fromFile.readLine(); // nazov obrazka
+	width = fromFile.readLine().toInt(); // rozmery
+	height = fromFile.readLine().toInt();
+	backgroundColor = fromFile.readLine(); // farba pozadia
+	numOfObj = fromFile.readLine().toInt(); // pocet objektov
+
+	for (int i = 0; i < numOfObj; i++) // postupne precitanie objektov
+	{
+		tempString = fromFile.readLine().trimmed();
+
+		type = tempString.split("|").at(0).toInt(); // typ objektu
+		objName = tempString.split("|").at(1);
+		penColor = tempString.split("|").at(2);
+		fillColor = tempString.split("|").at(3);
+		tempInt = tempString.split("|").at(4).toInt();
+		
+		if (tempInt == 0)
+			shouldFill = false;
+		else if (tempInt == 1)
+			shouldFill = true;
+
+		numOfObj = tempString.split("|").at(5).toInt();
+
+		tempString = tempString.split("|").at(6); // tu uz su v tempString iba body
+
+		for (int j = 0; j < numOfObj; j++)
+		{
+			x = tempString.split(";").at(j).split(",").at(0).toDouble();
+			y = tempString.split(";").at(j).split(",").at(1).toDouble();
+
+			tempObjectPoints.push_back(QPointF(x, y));
+		}
+
+		newObject = new Object2D;
+		newObject->setObjectType(type); // typ objektu
+		newObject->setObjectName(objName); // nazov
+		newObject->setPenColor(QColor(penColor)); // farba pera
+		newObject->setFillColor(QColor(fillColor)); // farba vyplne
+		newObject->setShouldFill(shouldFill); // ci treba vyplnat
+		newObject->setObjectPoints(&tempObjectPoints); // body objektu
+
+		tempObjects.push_back(newObject);
+	}
+
+	importFile.close();
+	infoMessage("import done");
+
+	openNewTabForImg(new ViewerWidget(name, QSize(width, height)));
+	ui->tabWidget->setCurrentIndex(ui->tabWidget->count() - 1);
+	vw = getCurrentViewerWidget();
+
+	vw->setBackgroundColor(QColor(backgroundColor)); // farba pozadia
+	vw->setGeometryObjects(tempObjects);
+
+	currentGeometryObjects = vw->getGeometryObjectsPointer();
+
+	ui->comboBox_SelectObject->clear();
+	for (int i = 0; i < currentGeometryObjects->size(); i++)
+	{
+		ui->comboBox_SelectObject->addItem((*currentGeometryObjects)[i]->getObjectName());
+	}
+
+	vw->clear();
+	drawObjects();
 }
