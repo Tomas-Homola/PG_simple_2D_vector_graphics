@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/ImageViewer">
+        <file>icons/arrowDown.png</file>
+        <file>icons/arrowLeft.png</file>
+        <file>icons/arrowRight.png</file>
+        <file>icons/arrowUp.png</file>
+        <file>icons/bezierCurve.png</file>
+        <file>icons/circle.png</file>
+        <file>icons/line2.png</file>
+        <file>icons/polygon2.png</file>
+        <file>icons/rectangle.png</file>
+    </qresource>
+</RCC>
