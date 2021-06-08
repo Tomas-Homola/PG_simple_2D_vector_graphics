@@ -885,7 +885,8 @@ void ViewerWidget::drawCircumference(Object2D* circumference)
 	{
 		QPoint point1 = circumference->getObjectPointsQPoint()[0];
 		QPoint point2 = circumference->getObjectPointsQPoint()[1];
-		QColor color = circumference->getPenColor();
+		QColor penColor = circumference->getPenColor();
+		QColor fillColor = circumference->getFillColor();
 
 		int deltaX = point2.x() - point1.x();
 		int deltaY = point2.y() - point1.y();
@@ -899,23 +900,36 @@ void ViewerWidget::drawCircumference(Object2D* circumference)
 		int Sx = point1.x();
 		int Sy = point1.y();
 
+		// vdaka Karin :)
+		if (circumference->fillObject())
+		{
+			for (int i = -radius; i <= radius; i++)
+			{
+				for (int j = -radius; j <= radius; j++)
+				{
+					if (i * i + j * j <= radius * radius)
+						setPixel(Sx + j, Sy + i, fillColor);
+				}
+			}
+		}
+
 		while (x <= y)
 		{
 			// pixely hore
-			setPixel(Sx - y, Sy + x, color);
-			setPixel(Sx - y, Sy - x, color);
+			setPixel(Sx - y, Sy + x, penColor);
+			setPixel(Sx - y, Sy - x, penColor);
 
 			// pixely dole
-			setPixel(Sx + y, Sy + x, color);
-			setPixel(Sx + y, Sy - x, color);
+			setPixel(Sx + y, Sy + x, penColor);
+			setPixel(Sx + y, Sy - x, penColor);
 
 			// pixely vpravo
-			setPixel(Sx + x, Sy - y, color);
-			setPixel(Sx + x, Sy + y, color);
+			setPixel(Sx + x, Sy - y, penColor);
+			setPixel(Sx + x, Sy + y, penColor);
 
 			// pixely na lavo
-			setPixel(Sx - x, Sy - y, color);
-			setPixel(Sx - x, Sy + y, color);
+			setPixel(Sx - x, Sy - y, penColor);
+			setPixel(Sx - x, Sy + y, penColor);
 
 			if (p > 0)
 			{

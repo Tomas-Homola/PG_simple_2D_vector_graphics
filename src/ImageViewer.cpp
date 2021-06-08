@@ -173,7 +173,6 @@ void ImageViewer::ViewerWidgetMouseButtonPress(ViewerWidget* w, QEvent* event)
 					{
 						ui->comboBox_SelectObject->addItem((*currentGeometryObjects)[i]->getObjectName());
 					}
-					qDebug() << "count:" << ui->comboBox_SelectObject->count();
 
 					ui->pushButton_PenColorDialog->setStyleSheet(QString("background-color:%1").arg(newObject->getPenColor().name()));
 
@@ -1353,12 +1352,9 @@ void ImageViewer::on_actionImport_triggered()
 	backgroundColor = fromFile.readLine(); // farba pozadia
 	numOfObj = fromFile.readLine().toInt(); // pocet objektov
 
-	qDebug() << name << width << height << backgroundColor << numOfObj;
-
 	for (int i = 0; i < numOfObj; i++) // postupne precitanie objektov
 	{
 		tempString = fromFile.readLine();
-		qDebug() << "tempString->" << tempString;
 
 		type = tempString.split("|").at(0).toInt(); // typ objektu
 		objName = tempString.split("|").at(1);
@@ -1374,15 +1370,12 @@ void ImageViewer::on_actionImport_triggered()
 		numOfPoints = tempString.split("|").at(5).toInt();
 
 		tempString = tempString.split("|").at(6); // tu uz su v tempString iba body
-		qDebug() << "iba body->" << tempString;
 
 		tempObjectPoints.clear();
 		for (int j = 0; j < numOfPoints; j++)
 		{
 			x = tempString.split(";").at(j).split(",").at(0).toDouble();
 			y = tempString.split(";").at(j).split(",").at(1).toDouble();
-
-			qDebug() << "\nx:" << x << "\ny:" << y;
 
 			tempObjectPoints.push_back(QPointF(x, y));
 		}
