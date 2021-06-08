@@ -1376,6 +1376,7 @@ void ImageViewer::on_actionImport_triggered()
 		tempString = tempString.split("|").at(6); // tu uz su v tempString iba body
 		qDebug() << "iba body->" << tempString;
 
+		tempObjectPoints.clear();
 		for (int j = 0; j < numOfPoints; j++)
 		{
 			x = tempString.split(";").at(j).split(",").at(0).toDouble();
