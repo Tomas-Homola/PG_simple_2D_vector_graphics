@@ -9,7 +9,6 @@ ImageViewer::ImageViewer(QWidget* parent)
 
 	currentPenColor = QColor("#FFFFFF");
 	currentFillColor = QColor("#1F75FE"); // custom modra farba
-	qDebug() << currentBackgroundColor.name();
 	ui->pushButton_PenColorDialog->setStyleSheet("background-color:#FFFFFF");
 	ui->pushButton_FillColorDialog->setStyleSheet("background-color:#1F75FE");
 
@@ -556,6 +555,7 @@ void ImageViewer::on_tabWidget_tabCloseRequested(int tabId)
 
 	delete vw; //vW->~ViewerWidget();
 	ui->tabWidget->removeTab(tabId);
+	ui->comboBox_SelectObject->clear();
 }
 void ImageViewer::on_actionRename_triggered()
 {
@@ -672,6 +672,9 @@ void ImageViewer::on_actionSet_background_color_triggered()
 void ImageViewer::on_pushButton_PenColorDialog_clicked()
 {
 	ViewerWidget* vw = getCurrentViewerWidget();
+	if (vw == nullptr)
+		return;
+
 	currentGeometryObjects = vw->getGeometryObjectsPointer();
 
 	if (currentGeometryObjects->isEmpty() || (ui->comboBox_SelectObject->currentIndex() == -1))
@@ -696,6 +699,9 @@ void ImageViewer::on_pushButton_PenColorDialog_clicked()
 void ImageViewer::on_pushButton_FillColorDialog_clicked()
 {
 	ViewerWidget* vw = getCurrentViewerWidget();
+	if (vw == nullptr)
+		return;
+
 	currentGeometryObjects = vw->getGeometryObjectsPointer();
 
 	if (currentGeometryObjects->isEmpty() || (ui->comboBox_SelectObject->currentIndex() == -1))
@@ -721,16 +727,14 @@ void ImageViewer::on_pushButton_FillColorDialog_clicked()
 // global colors
 void ImageViewer::on_actionSet_Global_Pen_Color_triggered()
 {
-	QColor chosenColor = QColorDialog::getColor(globalPenColor.name(), this, "Select pen color");
-	ViewerWidget* vw = getCurrentViewerWidget();
+	QColor chosenColor = QColorDialog::getColor(globalPenColor.name(), this, "Select global pen color");
 
 	if (chosenColor.isValid())
 		globalPenColor = chosenColor;
 }
 void ImageViewer::on_actionSet_Global_Fill_Color_triggered()
 {
-	QColor chosenColor = QColorDialog::getColor(globalFillColor.name(), this, "Select pen color");
-	ViewerWidget* vw = getCurrentViewerWidget();
+	QColor chosenColor = QColorDialog::getColor(globalFillColor.name(), this, "Select global fill color");
 
 	if (chosenColor.isValid())
 		globalFillColor = chosenColor;
@@ -739,46 +743,67 @@ void ImageViewer::on_actionSet_Global_Fill_Color_triggered()
 // select shape to draw
 void ImageViewer::on_actionLine_triggered()
 {
-	drawingEnabled = true;
-	drawingObject = Object2D::Line;
+	if (getCurrentViewerWidget() != nullptr)
+	{
+		drawingEnabled = true;
+		drawingObject = Object2D::Line;
+
+		if (!objectPoints.isEmpty())
+			objectPoints.clear();
+	}
 }
 void ImageViewer::on_actionRectangle_triggered()
 {
-	drawingEnabled = true;
-	drawingObject = Object2D::Rectangle;
+	if (getCurrentViewerWidget() != nullptr)
+	{
+		drawingEnabled = true;
+		drawingObject = Object2D::Rectangle;
 
-	if (!objectPoints.isEmpty())
-		objectPoints.clear();
+		if (!objectPoints.isEmpty())
+			objectPoints.clear();
+	}
+	
 }
 void ImageViewer::on_actionPolygon_triggered()
 {
-	drawingEnabled = true;
-	drawingObject = Object2D::Polygon;
+	if (getCurrentViewerWidget() != nullptr)
+	{
+		drawingEnabled = true;
+		drawingObject = Object2D::Polygon;
 
-	if (!objectPoints.isEmpty())
-		objectPoints.clear();
+		if (!objectPoints.isEmpty())
+			objectPoints.clear();
+	}
 }
 void ImageViewer::on_actionCircumference_triggered()
 {
-	drawingEnabled = true;
-	drawingObject = Object2D::Circumference;
+	if (getCurrentViewerWidget() != nullptr)
+	{
+		drawingEnabled = true;
+		drawingObject = Object2D::Circumference;
 
-	if (!objectPoints.isEmpty())
-		objectPoints.clear();
+		if (!objectPoints.isEmpty())
+			objectPoints.clear();
+	}
 }
 void ImageViewer::on_actionBezier_curve_triggered()
 {
-	drawingEnabled = true;
-	drawingObject = Object2D::BezierCurve;
+	if (getCurrentViewerWidget() != nullptr)
+	{
+		drawingEnabled = true;
+		drawingObject = Object2D::BezierCurve;
 
-	if (!objectPoints.isEmpty())
-		objectPoints.clear();
+		if (!objectPoints.isEmpty())
+			objectPoints.clear();
+	}
 }
 
 // Transformations
 void ImageViewer::on_pushButton_Rotate_clicked()
 {
 	ViewerWidget* vw = getCurrentViewerWidget();
+	if (vw == nullptr)
+		return;
 
 	currentGeometryObjects = vw->getGeometryObjectsPointer();
 	if (currentGeometryObjects->isEmpty() || (ui->comboBox_SelectObject->currentIndex() == -1))
@@ -831,6 +856,8 @@ void ImageViewer::on_pushButton_Rotate_clicked()
 void ImageViewer::on_pushButton_Symmetry_clicked()
 {
 	ViewerWidget* vw = getCurrentViewerWidget();
+	if (vw == nullptr)
+		return;
 
 	currentGeometryObjects = vw->getGeometryObjectsPointer();
 	if (currentGeometryObjects->isEmpty() || (ui->comboBox_SelectObject->currentIndex() == -1))
@@ -1083,9 +1110,9 @@ void ImageViewer::on_pushButton_MoveDownRight_clicked()
 // Objects
 void ImageViewer::on_comboBox_SelectObject_currentIndexChanged(int newIndex)
 {
-	if (newIndex == -1)
+	if (newIndex == -1 || getCurrentViewerWidget() == nullptr)
 		return;
-	qDebug() << "current index:" << ui->comboBox_SelectObject->currentIndex();
+	
 	selectedObject = getCurrentViewerWidget()->getGeometryObjectsRef()[ui->comboBox_SelectObject->currentIndex()];
 
 	if (selectedObject->getObjectType() == Object2D::Line || selectedObject->getObjectType() == Object2D::BezierCurve)
@@ -1242,31 +1269,41 @@ void ImageViewer::on_actionExport_triggered()
 	}
 	else
 	{
-		toFile << tempVect->size() << "\n";
+		toFile << tempVect->size() << "\n"; // pocet objektov
 
 		for (int i = 0; i < tempVect->size(); i++)
 		{
 			type = QString::number((*tempVect)[i]->getObjectType()); // typ objektu
+			toFile << type << "|";
 			name = (*tempVect)[i]->getObjectName(); // nazov objektu
+			toFile << name << "|";
 			pen = (*tempVect)[i]->getPenColor().name(); // farba pera
+			toFile << pen << "|";
 			fill = (*tempVect)[i]->getFillColor().name(); // farba vyplne
+			toFile << fill << "|";
 			if ((*tempVect)[i]->fillObject()) // ci sa ma objekt vyplnat
 				shouldFill = QString::number(1); // ano
 			else
 				shouldFill = QString::number(0); // nie
+			toFile << shouldFill << "|";
 
 			tempVectPoints = (*tempVect)[i]->getObjectPointsPointer();
 			numOfPoints = QString::number(tempVectPoints->size()); // pocet vrcholov
+			toFile << numOfPoints << "|";
 
 			pointsList.clear();
 			for (int j = 0; j < tempVectPoints->size(); j++) // body sa daju do QString listu
 			{
-				pointsList.push_back(QString("%1,%2").arg(QString::number((*tempVectPoints)[j].x(), 'f', 3)).arg(QString::number((*tempVectPoints)[j].y(), 'f', 3)));
+				//pointsList.push_back(QString("%1,%2").arg(QString::number((*tempVectPoints)[j].x(), 'f', 3)).arg(QString::number((*tempVectPoints)[j].y(), 'f', 3)));
+				
+				toFile << QString("%1,%2").arg(QString::number((*tempVectPoints)[j].x(), 'f', 3)).arg(QString::number((*tempVectPoints)[j].y(), 'f', 3)) << ";";
 			}
 
-			points = pointsList.join(";"); // toto spravi z listu jeden string, kde budu body oddelene cez ";"
+			toFile << "\n";
 
-			toFile << type << "|" << name << "|" << pen << "|" << fill << "|" << shouldFill << "|" << numOfPoints << "|" << points << "\n";
+			//points = pointsList.join(";"); // toto spravi z listu jeden string, kde budu body oddelene cez ";"
+
+			//toFile << type << "|" << name << "|" << pen << "|" << fill << "|" << shouldFill << "|" << numOfPoints << "|" << points << "\n";
 		}
 
 		exportFile.close();
@@ -1283,7 +1320,7 @@ void ImageViewer::on_actionImport_triggered()
 
 	QPointF tempPointF(0.0, 0.0);
 	QString name = "", penColor = "", fillColor = "", backgroundColor = "", tempString = "", objName = "";
-	int height = 0, width = 0, type = 0, tempInt = 0, numOfObj = 0;
+	int height = 0, width = 0, type = 0, tempInt = 0, numOfObj = 0, numOfPoints = 0;
 	double x = 0.0, y = 0.0;
 	bool shouldFill = false;
 
@@ -1316,9 +1353,12 @@ void ImageViewer::on_actionImport_triggered()
 	backgroundColor = fromFile.readLine(); // farba pozadia
 	numOfObj = fromFile.readLine().toInt(); // pocet objektov
 
+	qDebug() << name << width << height << backgroundColor << numOfObj;
+
 	for (int i = 0; i < numOfObj; i++) // postupne precitanie objektov
 	{
-		tempString = fromFile.readLine().trimmed();
+		tempString = fromFile.readLine();
+		qDebug() << "tempString->" << tempString;
 
 		type = tempString.split("|").at(0).toInt(); // typ objektu
 		objName = tempString.split("|").at(1);
@@ -1331,14 +1371,17 @@ void ImageViewer::on_actionImport_triggered()
 		else if (tempInt == 1)
 			shouldFill = true;
 
-		numOfObj = tempString.split("|").at(5).toInt();
+		numOfPoints = tempString.split("|").at(5).toInt();
 
 		tempString = tempString.split("|").at(6); // tu uz su v tempString iba body
+		qDebug() << "iba body->" << tempString;
 
-		for (int j = 0; j < numOfObj; j++)
+		for (int j = 0; j < numOfPoints; j++)
 		{
 			x = tempString.split(";").at(j).split(",").at(0).toDouble();
 			y = tempString.split(";").at(j).split(",").at(1).toDouble();
+
+			qDebug() << "\nx:" << x << "\ny:" << y;
 
 			tempObjectPoints.push_back(QPointF(x, y));
 		}
